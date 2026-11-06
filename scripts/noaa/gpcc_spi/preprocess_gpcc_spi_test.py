@@ -22,7 +22,6 @@ import tempfile
 import filecmp
 from dataclasses import dataclass
 import pandas as pd
-import math
 from . import preprocess_gpcc_spi
 
 # module_dir is the path to where this test is running from.
@@ -69,22 +68,30 @@ class GPCCSPIPreprocessTest(unittest.TestCase):
         # Test case 1: Positive lat/lon
         latlon_series_1 = pd.Series({'lat': 37.5, 'lon': 242.5})
         expected_1 = 'grid_1/37_-118'
-        self.assertEqual(preprocess_gpcc_spi.to_one_degree_grid_place(latlon_series_1), expected_1)
+        self.assertEqual(
+            preprocess_gpcc_spi.to_one_degree_grid_place(latlon_series_1),
+            expected_1)
 
         # Test case 2: Negative lat/lon
         latlon_series_2 = pd.Series({'lat': -10.5, 'lon': 10.5})
         expected_2 = 'grid_1/-11_10'
-        self.assertEqual(preprocess_gpcc_spi.to_one_degree_grid_place(latlon_series_2), expected_2)
+        self.assertEqual(
+            preprocess_gpcc_spi.to_one_degree_grid_place(latlon_series_2),
+            expected_2)
 
         # Test case 3: Lat/lon at boundary (e.g., 0, 180, 360)
         latlon_series_3 = pd.Series({'lat': 0.0, 'lon': 180.0})
         expected_3 = 'grid_1/0_-180'
-        self.assertEqual(preprocess_gpcc_spi.to_one_degree_grid_place(latlon_series_3), expected_3)
+        self.assertEqual(
+            preprocess_gpcc_spi.to_one_degree_grid_place(latlon_series_3),
+            expected_3)
 
         # Test case 4: Lat/lon at 359.9 (just before 360)
         latlon_series_4 = pd.Series({'lat': 1.0, 'lon': 359.9})
         expected_4 = 'grid_1/1_-1'
-        self.assertEqual(preprocess_gpcc_spi.to_one_degree_grid_place(latlon_series_4), expected_4)
+        self.assertEqual(
+            preprocess_gpcc_spi.to_one_degree_grid_place(latlon_series_4),
+            expected_4)
 
 
 if __name__ == '__main__':
