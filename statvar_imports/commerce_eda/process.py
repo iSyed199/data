@@ -106,11 +106,14 @@ def process_investment_csv(input_csv_filepath: str, output_csv_filepath: str,
         logging.fatal(
             f"Error: Input file not found at {input_csv_filepath}. Please ensure it was transferred successfully."
         )
+        raise  # Re-raise the exception to prevent UnboundLocalError
     except pd.errors.EmptyDataError:
         logging.fatal(f"Error: Input file {input_csv_filepath} is empty.")
+        raise  # Re-raise the exception to prevent UnboundLocalError
 
     except Exception as e:
         logging.fatal(f"Error reading CSV file {input_csv_filepath}: {e}")
+        raise  # Re-raise the exception to prevent UnboundLocalError
 
     output_data = []
     current_state = None
@@ -170,8 +173,9 @@ def process_investment_csv(input_csv_filepath: str, output_csv_filepath: str,
         f"Original_Col_{i}" for i in range(1, df.shape[1])
     ]
     output_df = pd.DataFrame(output_data, columns=output_column_names)
-    output_df = output_df.applymap(lambda x: None if x is None or (isinstance(
-        x, str) and x.lower() == "nan") else x)
+    output_df = output_df.apply(
+        lambda col: col.map(lambda x: None if x is None or
+                            (isinstance(x, str) and x.lower() == "nan") else x))
 
     try:
         output_df.to_csv(output_csv_filepath,
