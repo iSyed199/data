@@ -16,12 +16,9 @@ This Python Script Load the datasets, cleans it and generates
 cleaned CSV, MCF, TMCF file.
 """
 import io
-import json
 import os
-import shutil
 import sys
-import tempfile
-import time
+
 from absl import app
 from absl import flags
 from absl import logging
@@ -384,7 +381,7 @@ class USCensusPEPByASR:
         # After processing all files, ensure all files were processed
         if processed_count == total_files_to_process and total_files_to_process > 0:
             # Drop the unwanted columns and NA.
-            logging.info(f"Dropping unwanted columns and NA")
+            logging.info("Dropping unwanted columns and NA")
             final_df = final_df.drop(columns=['Unnamed: 0'], errors='ignore')
             final_df = final_df.dropna()
             final_df['Year'] = final_df['Year'].astype(float).astype(int)
@@ -392,7 +389,7 @@ class USCensusPEPByASR:
                 float).astype(int)
             logging.info(f"Sorting data {final_df.shape} by year, geo-id")
             final_df = final_df.sort_values(by=['Year', 'geo_ID'])
-            logging.info(f"Setting measurement method")
+            logging.info("Setting measurement method")
             final_df = _measurement_method(final_df)
             logging.info(
                 f"Writing data {final_df.shape} to {self._cleaned_csv_file_path}"
@@ -402,7 +399,7 @@ class USCensusPEPByASR:
             logging.info(f"Generating MCF for {len(sv_list)}")
             sv_list.sort()
             self._generate_mcf(sv_list)
-            logging.info(f"Generating TMCF")
+            logging.info("Generating TMCF")
             self._generate_tmcf()
         else:
             logging.fatal(
@@ -422,6 +419,12 @@ def download_files():
     output_folder = "input_data"
     logging.info("Download starts")
     try:
+        from us_census.pep.population_estimates_by_asr.county_1970_1979 import county1970
+        from us_census.pep.population_estimates_by_asr.county_1980_1989 import county1980
+        from us_census.pep.population_estimates_by_asr.county_1990_2000 import county1990
+        from us_census.pep.population_estimates_by_asr.county_2000_2010 import county2000
+        from us_census.pep.population_estimates_by_asr.county_2010_2020 import county2010
+        from us_census.pep.population_estimates_by_asr.county_2020_2029 import county2029
         from us_census.pep.population_estimates_by_asr.national_1900_1959 import national1900
         from us_census.pep.population_estimates_by_asr.national_1960_1979 import national1960
         from us_census.pep.population_estimates_by_asr.national_1980_1989 import national1980
@@ -433,12 +436,6 @@ def download_files():
         from us_census.pep.population_estimates_by_asr.state_2000_2010 import state2000
         from us_census.pep.population_estimates_by_asr.state_2010_2020 import state2010
         from us_census.pep.population_estimates_by_asr.state_2020_2029 import state2029
-        from us_census.pep.population_estimates_by_asr.county_1970_1979 import county1970
-        from us_census.pep.population_estimates_by_asr.county_1980_1989 import county1980
-        from us_census.pep.population_estimates_by_asr.county_1990_2000 import county1990
-        from us_census.pep.population_estimates_by_asr.county_2000_2010 import county2000
-        from us_census.pep.population_estimates_by_asr.county_2010_2020 import county2010
-        from us_census.pep.population_estimates_by_asr.county_2020_2029 import county2029
 
         add_future_year_urls()
         national1900(output_folder)
