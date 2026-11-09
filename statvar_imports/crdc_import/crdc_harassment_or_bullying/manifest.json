@@ -14,7 +14,7 @@
             ],
             "import_inputs": [
                 {
-                    "template_mcf": "processed_output/crdc_harassment_or_bullying_2012_part_01.tmcf",
+                    "template_mcf": "processed_output/crdc_harassment_or_bullying_2012.tmcf",
                     "cleaned_csv": "processed_output/crdc_harassment_or_bullying_2012*.csv",
                     "node_mcf": "processed_output/crdc_harassment_or_bullying_2012*.mcf"
                 },
