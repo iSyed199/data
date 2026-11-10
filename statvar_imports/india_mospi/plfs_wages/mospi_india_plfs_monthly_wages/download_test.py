@@ -64,6 +64,38 @@ def _sample_api_record(
     }
 
 
+def _sample_api_record_without_month(
+    year_type: str = 'Agriculture Year',
+    year: str = '2017-18',
+    quarter: str | None = 'Jul-Sep',
+    value: str | None = '12658.6',
+) -> dict[str, object]:
+    record = {
+        'year_type':
+            year_type,
+        'year':
+            year,
+        'frequency':
+            'Annually',
+        'indicator':
+            'Average wage/salary earnings (Rs. 0.00) during the preceding calendar month from regular wage/salaried employment',
+        'state':
+            'All India',
+        'gender':
+            'male',
+        'sector':
+            'rural',
+        'quarter':
+            quarter,
+        'value':
+            value,
+        'unit':
+            '₹',
+    }
+    # Explicitly omit 'month' key
+    return record
+
+
 def _mock_response(status_code: int, payload: dict[str, object]) -> mock.Mock:
     resp = mock.Mock(spec=requests.Response)
     resp.status_code = status_code
@@ -250,6 +282,39 @@ class DownloadTest(unittest.TestCase):
             loaded = download.load_baseline_csv(out_path)
             pd.testing.assert_frame_equal(merged, df)
             pd.testing.assert_frame_equal(loaded, df)
+
+    def test_fetch_mospi_monthly_wages_handles_missing_month_column(self):
+        session = mock.Mock(spec=requests.Session)
+        page1 = {
+            'statusCode':
+                True,
+            'meta_data': {
+                'page': 1,
+                'totalRecords': 2,
+                'totalPages': 1,
+                'recordPerPage': 2,
+            },
+            'data': [
+                _sample_api_record('Agriculture Year', '2017-18', 'Jul-Sep',
+                                   '12658.6'),
+                _sample_api_record_without_month('Calendar Year', '2025', None,
+                                                 '21500.4'),
+            ],
+        }
+        session.get.return_value = _mock_response(200, page1)
+
+        df = download.fetch_mospi_monthly_wages(
+            session=session,
+            api_url='https://api.mospi.gov.in/api/plfs/getData',
+            page_size=2,
+            retry_delay_seconds=0.01,
+        )
+        self.assertEqual(len(df), 2)
+        # Original record has month: None, which becomes ''
+        self.assertEqual(df.iloc[0]['month'], '')
+        # Record with missing 'month' key should also result in ''
+        self.assertEqual(df.iloc[1]['month'], '')
+        self.assertEqual(df.iloc[1]['value'], '21500.4')
 
 
 if __name__ == '__main__':
