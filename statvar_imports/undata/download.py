@@ -65,7 +65,7 @@ HEADERS = {
        delay=5,
        backoff=2)
 def retry_method(url, headers=HEADERS):
-    response = requests.get(url, headers=headers, timeout=60)
+    response = requests.get(url, headers=headers, timeout=180)
     response.raise_for_status()
     if not zipfile.is_zipfile(io.BytesIO(response.content)):
         snippet = response.content[:300]
