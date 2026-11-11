@@ -37,8 +37,9 @@ def _sample_api_record(
     year: str = '2017-18',
     quarter: str | None = 'Jul-Sep',
     value: str | None = '12658.6',
+    month: str | None = None,
 ) -> dict[str, object]:
-    return {
+    record = {
         'year_type':
             year_type,
         'year':
@@ -56,12 +57,13 @@ def _sample_api_record(
         'quarter':
             quarter,
         'month':
-            None,
+            month,
         'value':
             value,
         'unit':
             '₹',
     }
+    return record
 
 
 def _mock_response(status_code: int, payload: dict[str, object]) -> mock.Mock:
@@ -250,6 +252,35 @@ class DownloadTest(unittest.TestCase):
             loaded = download.load_baseline_csv(out_path)
             pd.testing.assert_frame_equal(merged, df)
             pd.testing.assert_frame_equal(loaded, df)
+
+    def test_fetch_mospi_monthly_wages_handles_missing_month_column(self):
+        session = mock.Mock(spec=requests.Session)
+        record_with_month = _sample_api_record(year='2023', month='Jan')
+        record_without_month = _sample_api_record(year='2024')
+        del record_without_month['month']  # Simulate missing column
+
+        payload = {
+            'statusCode': True,
+            'meta_data': {
+                'page': 1,
+                'totalRecords': 2,
+                'totalPages': 1,
+                'recordPerPage': 2,
+            },
+            'data': [record_with_month, record_without_month],
+        }
+        session.get.return_value = _mock_response(200, payload)
+
+        df = download.fetch_mospi_monthly_wages(
+            session=session,
+            api_url='https://api.mospi.gov.in/api/plfs/getData',
+            page_size=2,
+            retry_delay_seconds=0.01,
+        )
+
+        self.assertEqual(len(df), 2)
+        self.assertEqual(df.iloc[0]['month'], 'Jan')
+        self.assertEqual(df.iloc[1]['month'], '')  # Should be empty string
 
 
 if __name__ == '__main__':
