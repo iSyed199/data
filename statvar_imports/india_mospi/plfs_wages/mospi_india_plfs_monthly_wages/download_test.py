@@ -55,8 +55,6 @@ def _sample_api_record(
             'rural',
         'quarter':
             quarter,
-        'month':
-            None,
         'value':
             value,
         'unit':
@@ -188,35 +186,36 @@ class DownloadTest(unittest.TestCase):
         mock_sleep.assert_not_called()
 
     def test_merge_records_retains_historical_rows_and_updates_new_years(self):
+
+        def _make_row(record):
+            return {
+                col: '' if record.get(col) is None else str(record.get(col))
+                for col in download.COLUMNS
+            }
+
         baseline_df = pd.DataFrame(
             [
-                {
-                    col: '' if v is None else str(v) for col, v in
+                _make_row(
                     _sample_api_record('Agriculture Year', '2017-18', 'Jul-Sep',
-                                       '12658.6').items()
-                },
-                {
-                    col: '' if v is None else str(v)
-                    for col, v in _sample_api_record('Calendar Year', '2025',
-                                                     None, '21000.0').items()
-                },
+                                       '12658.6')),
+                _make_row(
+                    _sample_api_record('Calendar Year', '2025', None,
+                                       '21000.0')),
             ],
             columns=download.COLUMNS,
+            dtype=str,
         )
         live_df = pd.DataFrame(
             [
-                {
-                    col: '' if v is None else str(v)
-                    for col, v in _sample_api_record('Calendar Year', '2025',
-                                                     None, '21500.5').items()
-                },
-                {
-                    col: '' if v is None else str(v)
-                    for col, v in _sample_api_record('Calendar Year', '2026',
-                                                     None, '22800.2').items()
-                },
+                _make_row(
+                    _sample_api_record('Calendar Year', '2025', None,
+                                       '21500.5')),
+                _make_row(
+                    _sample_api_record('Calendar Year', '2026', None,
+                                       '22800.2')),
             ],
             columns=download.COLUMNS,
+            dtype=str,
         )
 
         merged = download.merge_records(baseline_df, live_df)
@@ -228,12 +227,14 @@ class DownloadTest(unittest.TestCase):
         self.assertEqual(by_year['2026'], '22800.2')
 
     def test_run_download_skip_live_api_writes_baseline_atomically(self):
+        record = _sample_api_record()
         df = pd.DataFrame(
             [{
-                col: '' if v is None else str(v)
-                for col, v in _sample_api_record().items()
+                col: '' if record.get(col) is None else str(record.get(col))
+                for col in download.COLUMNS
             }],
             columns=download.COLUMNS,
+            dtype=str,
         )
         with tempfile.TemporaryDirectory() as tmp_dir:
             baseline_path = os.path.join(tmp_dir, 'baseline.csv')

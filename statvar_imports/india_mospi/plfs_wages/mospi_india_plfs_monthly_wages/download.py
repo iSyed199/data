@@ -286,13 +286,15 @@ def fetch_mospi_monthly_wages(
             )
 
         for item in records:
-            missing_cols = [col for col in COLUMNS if col not in item]
+            missing_cols = [
+                col for col in COLUMNS if col not in item and col != 'month'
+            ]
             if missing_cols:
                 raise RuntimeError(
                     f'MoSPI API record on page {page} missing columns {missing_cols}'
                 )
             all_rows.append({
-                col: '' if item[col] is None else str(item[col])
+                col: '' if item.get(col) is None else str(item.get(col))
                 for col in COLUMNS
             })
         page += 1
