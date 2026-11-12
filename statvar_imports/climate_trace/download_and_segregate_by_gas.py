@@ -38,6 +38,12 @@ def download_and_process_zip(url, country_iso, gas):
                 return pd.concat(df_list, ignore_index=True)
             else:
                 return None
+    except requests.exceptions.HTTPError as e:
+        if e.response is not None and e.response.status_code == 404:
+            logging.warning(f"    -> File not found (404) for {url}. Skipping.")
+            return None
+        logging.error(f"    -> HTTP error downloading {url}: {e}")
+        raise
     except requests.exceptions.RequestException as e:
         logging.error(f"    -> Failed to download {url}: {e}")
         raise
