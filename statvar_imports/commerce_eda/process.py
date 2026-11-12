@@ -172,8 +172,8 @@ def process_investment_csv(input_csv_filepath: str, output_csv_filepath: str,
         f"Original_Col_{i}" for i in range(1, df.shape[1])
     ]
     output_df = pd.DataFrame(output_data, columns=output_column_names)
-    output_df = output_df.applymap(lambda x: None if x is None or (isinstance(
-        x, str) and x.lower() == "nan") else x)
+    # Replace 'nan' strings (case-insensitive) and actual None/NaN values with None
+    output_df = output_df.replace(r'(?i)nan', None, regex=True).fillna(None)
 
     try:
         output_df.to_csv(output_csv_filepath,
