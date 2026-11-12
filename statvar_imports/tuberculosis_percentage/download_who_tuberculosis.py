@@ -1,5 +1,6 @@
 import io
 import os
+import sys
 
 import pandas as pd
 import requests
@@ -19,7 +20,7 @@ def download_tb_percentage_data():
 
     if api_response.status_code != 200:
         print(f"Failed to fetch API data. HTTP {api_response.status_code}")
-        return
+        sys.exit(1)
 
     # Load the clean API data into a pandas table
     api_df = pd.read_csv(io.StringIO(api_response.text))
