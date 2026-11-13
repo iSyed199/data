@@ -148,6 +148,31 @@ class DownloadTest(unittest.TestCase):
             download.fetch_mospi_monthly_wages(session=session,
                                                retry_delay_seconds=0.01)
 
+    def test_fetch_mospi_monthly_wages_handles_missing_columns(self):
+        session = mock.Mock(spec=requests.Session)
+        record = _sample_api_record()
+        del record['month']
+        payload = {
+            'statusCode': True,
+            'meta_data': {
+                'page': 1,
+                'totalRecords': 1,
+                'totalPages': 1,
+                'recordPerPage': 200,
+            },
+            'data': [record],
+        }
+        session.get.return_value = _mock_response(200, payload)
+
+        df = download.fetch_mospi_monthly_wages(
+            session=session,
+            api_url='https://api.mospi.gov.in/api/plfs/getData',
+            page_size=200,
+            retry_delay_seconds=0.01,
+        )
+        self.assertEqual(len(df), 1)
+        self.assertEqual(df.iloc[0]['month'], '')
+
     @mock.patch.object(download.time, 'sleep')
     def test_fetch_page_retries_transient_503_and_succeeds(self, mock_sleep):
         session = mock.Mock(spec=requests.Session)
