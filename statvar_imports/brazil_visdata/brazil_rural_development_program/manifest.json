@@ -73,6 +73,9 @@
         {
           "template_mcf": "output_files/TotalFamilies_Rural_Development_Program_State_output.tmcf",
           "cleaned_csv": "output_files/TotalFamilies_Rural_Development_Program_State_output.csv"
+        },
+        {
+          "node_mcf": "output_files/*_stat_vars*.mcf"
         }
       ],
       "cron_schedule": "0 06 * * 5"
