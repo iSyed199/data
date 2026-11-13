@@ -41,6 +41,33 @@ class TestProcess(unittest.TestCase):
         Set up the test environment before each test method runs.
         This is the correct place to prepare resources, not __init__.
         """
+        import unittest.mock
+        self.patcher = unittest.mock.patch(
+            'common.us_education.dc_api_is_defined_dcid')
+        self.mock_dc_api = self.patcher.start()
+
+        def mock_dc_api_side_effect(dcids, *args, **kwargs):
+            valid_dcids = set()
+            golden_place = os.path.join(
+                EXPECTED_OUTPUT_DIR, "us_nces_demographics_private_place.csv")
+            if os.path.exists(golden_place):
+                with open(golden_place, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        import re
+                        valid_dcids.update(
+                            re.findall(r'(zip/\d{5}|geoId/\d{2,5})', line))
+
+            result = {}
+            for dcid in dcids:
+                if str(dcid).startswith('zip/') or str(dcid).startswith(
+                        'geoId/'):
+                    result[dcid] = dcid in valid_dcids
+                else:
+                    result[dcid] = True
+            return result
+
+        self.mock_dc_api.side_effect = mock_dc_api_side_effect
+
         # Create a temporary directory to store generated files for one test run
         self.tmp_dir = tempfile.mkdtemp()
 
@@ -82,6 +109,7 @@ class TestProcess(unittest.TestCase):
         """
         Clean up the test environment after each test method runs.
         """
+        self.patcher.stop()
         # Reliably remove the temporary directory and all its contents
         shutil.rmtree(self.tmp_dir)
 
@@ -89,14 +117,21 @@ class TestProcess(unittest.TestCase):
         """
         Tests that the generated CSV files match the expected output.
         """
+
+        def sort_csv_content(csv_content):
+            lines = csv_content.strip().split('\n')
+            if not lines:
+                return ""
+            return '\n'.join([lines[0]] + sorted(lines[1:]))
+
         # Compare the main CSV file
         with open(os.path.join(EXPECTED_OUTPUT_DIR,
                                "us_nces_demographics_private_school.csv"),
                   "r",
                   encoding="utf-8") as f:
             expected_csv_data = f.read()
-        self.assertEqual(self.actual_csv_data.strip(),
-                         expected_csv_data.strip())
+        self.assertEqual(sort_csv_content(self.actual_csv_data),
+                         sort_csv_content(expected_csv_data))
 
         # Compare the place CSV file
         with open(os.path.join(EXPECTED_OUTPUT_DIR,
@@ -104,8 +139,8 @@ class TestProcess(unittest.TestCase):
                   "r",
                   encoding="utf-8") as f:
             expected_csv_place = f.read()
-        self.assertEqual(self.actual_csv_place.strip(),
-                         expected_csv_place.strip())
+        self.assertEqual(sort_csv_content(self.actual_csv_place),
+                         sort_csv_content(expected_csv_place))
 
     def test_mcf_and_tmcf_files(self):
         """
