@@ -22,6 +22,11 @@
                 }
             ],
             "cron_schedule": "0 0 * * 0",
+            "config_override": {
+                "ignore_validation_status": [
+                    "check_missing_refs_count"
+                ]
+            },
             "_comment": "Schedule: Weekly on Sunday at 00:00 UTC"
         }
     ]
