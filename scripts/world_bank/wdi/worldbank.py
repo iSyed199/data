@@ -238,7 +238,8 @@ def read_worldbank(iso3166alpha3, mode):
                        backoff=1.5)
 
         if r.status_code != 200:
-            logging.fatal('Failed to retrieve %s', iso3166alpha3)
+            logging.warning('Failed to retrieve %s', iso3166alpha3)
+            return None
 
         myzipfile = zipfile.ZipFile(io.BytesIO(r.content))
         file_to_open = next(

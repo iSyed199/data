@@ -15,6 +15,7 @@
 import io
 import os
 import unittest
+import unittest.mock
 
 import numpy as np
 import pandas as pd
@@ -81,6 +82,16 @@ class WDITest(unittest.TestCase):
             generated_tmcf_data = generated_tmcf_file.read()
         self.assertEqual(expected_tmcf_data.strip(),
                          generated_tmcf_data.strip())
+
+    @unittest.mock.patch('worldbank.requests.get')
+    def test_read_worldbank_404(self, mock_get):
+        mock_resp = unittest.mock.Mock()
+        mock_resp.status_code = 404
+        mock_get.return_value = mock_resp
+
+        from worldbank import read_worldbank
+        result = read_worldbank('PHL', 'download')
+        self.assertIsNone(result)
 
     def test_merge_historical_data(self):
         fresh_df = pd.DataFrame({
