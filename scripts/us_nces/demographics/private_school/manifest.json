@@ -17,7 +17,8 @@
             "import_inputs": [
                 {
                     "template_mcf": "gcs_folder/output_files/us_nces_demographics_private_school.tmcf",
-                    "cleaned_csv": "gcs_folder/output_files/us_nces_demographics_private_school.csv"
+                    "cleaned_csv": "gcs_folder/output_files/us_nces_demographics_private_school.csv",
+                    "node_mcf": "gcs_folder/output_files/us_nces_demographics_private_school.mcf"
                 },
                 {
                     "template_mcf": "gcs_folder/output_place/us_nces_demographics_private_place.tmcf",
