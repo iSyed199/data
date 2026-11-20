@@ -14,7 +14,8 @@
             "import_inputs": [
                 {
                     "template_mcf": "output_files/census_sahie.tmcf",
-                    "cleaned_csv": "output_files/census_sahie.csv"
+                    "cleaned_csv": "output_files/census_sahie.csv",
+                    "node_mcf": "output_files/census_sahie_stat_vars.mcf"
                 }
             ],
             "source_files": [
