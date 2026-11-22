@@ -130,34 +130,11 @@ class ProcessTest(unittest.TestCase):
             self.assertEqual(mock_session.get.call_count, 3)
 
     @mock.patch('os.makedirs')
-    def test_download_and_process_data_future_year_404_skip(
-            self, mock_makedirs):
-        mock_dt = mock.MagicMock()
-        mock_dt.now.return_value = datetime(2027, 1, 1)
-        with mock.patch.object(process, 'check_url_status', return_value=False), \
-             mock.patch.object(process, 'datetime', mock_dt):
-            # Future year 2027 within skip window returns None
-            result = process.download_and_process_data(2027, {})
-            self.assertIsNone(result)
-
-    @mock.patch('os.makedirs')
-    def test_download_and_process_data_historical_year_404_raises(
-            self, mock_makedirs):
+    def test_download_and_process_data_404_skips(self, mock_makedirs):
         with mock.patch.object(process, 'check_url_status', return_value=False):
-            # Historical year 2022 should fail loudly
-            with self.assertRaises(requests.HTTPError):
-                process.download_and_process_data(2022, {})
-
-    @mock.patch('os.makedirs')
-    def test_download_and_process_data_overdue_year_404_raises(
-            self, mock_makedirs):
-        mock_dt = mock.MagicMock()
-        mock_dt.now.return_value = datetime(2030, 1, 1)
-        with mock.patch.object(process, 'check_url_status', return_value=False), \
-             mock.patch.object(process, 'datetime', mock_dt):
-            # In 2030, 2027 is overdue and should raise HTTPError
-            with self.assertRaises(requests.HTTPError):
-                process.download_and_process_data(2027, {})
+            result = process.download_and_process_data('crops', 'http://url',
+                                                       {})
+            self.assertIsNone(result)
 
     @mock.patch('os.makedirs')
     @mock.patch.object(process, 'check_url_status', return_value=True)
@@ -165,25 +142,33 @@ class ProcessTest(unittest.TestCase):
     @mock.patch.object(process, 'unzip_file', return_value='input/test.txt')
     @mock.patch.object(process, 'write_csv')
     @mock.patch('file_util.FileIO')
-    def test_download_and_process_data_success(self, mock_file_io,
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
+    def test_download_and_process_data_success(self, mock_open, mock_file_io,
                                                mock_write_csv, mock_unzip,
                                                mock_download, mock_check_url,
                                                mock_makedirs):
         mock_session = mock.MagicMock()
-        result = process.download_and_process_data(2022, {},
-                                                   session=mock_session)
-        self.assertEqual(result, os.path.join('output', 'agriculture_2022.csv'))
+        result = process.download_and_process_data(
+            'crops',
+            'https://www.nass.usda.gov/sites/default/files/datasets/qs.crops_20261121.txt.gz',
+            {},
+            session=mock_session)
+        self.assertEqual(result, os.path.join('output',
+                                              'agriculture_crops.csv'))
         mock_check_url.assert_called_once()
         mock_download.assert_called_once_with(
-            'https://www.nass.usda.gov/sites/default/files/datasets/qs.census2022.txt.gz',
-            os.path.join('input', 'qs.census2022.txt.gz'),
+            'https://www.nass.usda.gov/sites/default/files/datasets/qs.crops_20261121.txt.gz',
+            os.path.join('input', 'qs.crops.txt.gz'),
             session=mock_session)
 
     @mock.patch('os.makedirs')
     @mock.patch.object(process, 'get_statvars', return_value={})
+    @mock.patch.object(process,
+                       'get_census_urls',
+                       return_value={'crops': 'http://url'})
     @mock.patch.object(process, 'download_and_process_data', return_value=None)
-    def test_main_empty_files_raises(self, mock_download, mock_get_statvars,
-                                     mock_makedirs):
+    def test_main_empty_files_raises(self, mock_download, mock_get_urls,
+                                     mock_get_statvars, mock_makedirs):
         with flagsaver.flagsaver(mode='download'):
             with self.assertRaises(RuntimeError) as ctx:
                 process.main([])
@@ -193,11 +178,14 @@ class ProcessTest(unittest.TestCase):
     @mock.patch('os.makedirs')
     @mock.patch.object(process, 'get_statvars', return_value={})
     @mock.patch.object(process,
+                       'get_census_urls',
+                       return_value={'crops': 'http://url'})
+    @mock.patch.object(process,
                        'download_and_process_data',
-                       return_value='output/agriculture_2022.csv')
+                       return_value='output/agriculture_crops.csv')
     @mock.patch.object(process, 'merge_csv_files')
     def test_main_download_and_merge_with_session(self, mock_merge,
-                                                  mock_download,
+                                                  mock_download, mock_get_urls,
                                                   mock_get_statvars,
                                                   mock_makedirs):
         with flagsaver.flagsaver(mode='', output='output/agriculture.csv'):

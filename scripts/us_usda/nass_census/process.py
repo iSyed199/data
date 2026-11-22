@@ -17,6 +17,7 @@ import csv
 from datetime import datetime
 import gzip
 import os
+import re
 import shutil
 import sys
 
@@ -129,6 +130,8 @@ def write_csv(reader, out, d):
                                 lineterminator='\n')
         writer.writeheader()
         for r in reader:
+            if r.get('SOURCE_DESC') != 'CENSUS':
+                continue
             key = r['SHORT_DESC']
             if r['DOMAINCAT_DESC']:
                 key += '%%' + r['DOMAINCAT_DESC']
@@ -181,25 +184,46 @@ def merge_csv_files(output_file, input_files):
         logging.info(f"Merged output written to: {output_file}")
 
 
-def download_and_process_data(year, d, session=None):
-    url = f"https://www.nass.usda.gov/sites/default/files/datasets/qs.census{year}.txt.gz"
+def get_census_urls(session=None):
+    client = session or requests
+    url = "https://www.nass.usda.gov/datasets"
+    resp = client.get(url, timeout=30)
+    gz_links = re.findall(r'href=["\']?([^"\' >]+\.gz)', resp.text, re.I)
+
+    urls = {}
+    for link in gz_links:
+        if link.startswith('/'):
+            full_url = f"https://www.nass.usda.gov{link}"
+        else:
+            full_url = link
+
+        m = re.search(r'qs\.([a-z_]+)_', link)
+        if m:
+            name = m.group(1)
+            urls[name] = full_url
+
+    return urls
+
+
+def download_and_process_data(name, url, d, session=None):
     input_dir = "input"
     output_dir = "output"  # Define the output directory
     os.makedirs(input_dir, exist_ok=True)  # Ensure input directory exists
     os.makedirs(output_dir, exist_ok=True)  # Ensure output directory exists
 
     if check_url_status(url, session=session):
-        gz_file_path = os.path.join(input_dir, f"qs.census{year}.txt.gz")
+        gz_file_path = os.path.join(input_dir, f"qs.{name}.txt.gz")
         download_file(url, gz_file_path,
                       session=session)  # Download the .gz file
         txt_file_path = unzip_file(gz_file_path,
                                    input_dir)  # Unzip to input directory
 
         # Set the output file path inside the output directory
-        output_file = os.path.join(output_dir, f"agriculture_{year}.csv")
+        output_file = os.path.join(output_dir, f"agriculture_{name}.csv")
 
         # Process the file and write the results to the output directory
-        with file_util.FileIO(txt_file_path, 'r') as input_f:
+        with open(txt_file_path, 'r', encoding='utf-8',
+                  errors='replace') as input_f:
             reader = csv.DictReader(input_f, delimiter='\t')
             with file_util.FileIO(output_file, 'w', newline='') as out_f:
                 write_csv(reader, out_f, d)
@@ -207,13 +231,8 @@ def download_and_process_data(year, d, session=None):
         logging.info(f"Processed file saved to: {output_file}")
         return output_file
     else:
-        if year > 2022 and year >= datetime.now().year - 2:
-            logging.warning(
-                f"URL not accessible (404), skipping future census year {year}: {url}"
-            )
-            return None
-        raise requests.HTTPError(
-            f"Historical or overdue census year {year} returned 404 at {url}")
+        logging.warning(f"URL not accessible (404), skipping {name}: {url}")
+        return None
 
 
 def main(_):
@@ -229,11 +248,23 @@ def main(_):
     if mode == 'download' or mode == '':
         files = []
         with requests.Session() as session:
-            for year in range(2002, 2048, 5):
-                if year <= datetime.now().year:
-                    file = download_and_process_data(year, d, session=session)
-                    if file:
-                        files.append(file)
+            name_to_url = get_census_urls(session)
+            if not name_to_url:
+                logging.warning(
+                    "Could not find any census URLs on the datasets page. Falling back to default URLs."
+                )
+                # Fallback to known sector files if scraping fails
+                for name in [
+                        'animals_products', 'crops', 'demographics',
+                        'economics', 'environmental'
+                ]:
+                    name_to_url[
+                        name] = f"https://www.nass.usda.gov/sites/default/files/datasets/qs.{name}_latest.txt.gz"
+
+            for name, url in sorted(name_to_url.items()):
+                file = download_and_process_data(name, url, d, session=session)
+                if file:
+                    files.append(file)
         if not files:
             raise RuntimeError("No census files were downloaded or processed.")
         if mode == '':
@@ -250,10 +281,12 @@ def main(_):
         ]
         output_files = []
         for txt_file in txt_files:
-            year = os.path.basename(txt_file).split('qs.census')[-1].split(
-                '.txt')[0]
-            output_file = f"agriculture_{year}.csv"
-            with file_util.FileIO(txt_file, 'r') as input_f:
+            # Extract name from qs.{name}.txt
+            basename = os.path.basename(txt_file)
+            name = basename.replace('qs.', '').replace('.txt', '')
+            output_file = f"agriculture_{name}.csv"
+            with open(txt_file, 'r', encoding='utf-8',
+                      errors='replace') as input_f:
                 reader = csv.DictReader(input_f, delimiter='\t')
                 with file_util.FileIO(output_file, 'w', newline='') as out_f:
                     write_csv(reader, out_f, d)
