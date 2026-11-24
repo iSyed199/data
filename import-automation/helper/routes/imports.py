@@ -17,6 +17,7 @@ import os
 
 from clients.bigquery import BigQueryClient
 from clients.storage import StorageClient
+import config
 from dependencies import get_bigquery_client
 from dependencies import get_storage_client
 from fastapi import APIRouter
@@ -58,21 +59,18 @@ def update_import_status(
         req_dict = {k: v for k, v in import_req.items() if v is not None}
         params = import_utils.get_import_params(req_dict)
 
-        staging_version = (os.path.basename(item.latestVersion or '')
-                           if item.status == ImportState.STAGING else None)
-        if item.status == ImportState.INACTIVE:
-            params['next_refresh'] = None
-        elif req.nextRefresh is None:
-            manifest = storage.get_import_manifest(item.importName,
-                                                   version=staging_version or
-                                                   None)
-            params['next_refresh'] = import_utils.get_next_refresh(
-                item.importName, manifest=manifest)
+        next_refresh = None
+        if config.IS_BASE_DC and config.PROJECT_ID and config.LOCATION:
+            next_refresh = import_utils.get_next_refresh(
+                config.PROJECT_ID, config.LOCATION, item.importName)
+
+        if next_refresh:
+            params['next_refresh'] = next_refresh
 
         wf_id = req.workflowId or req.jobId
         comment = None
         if item.status == ImportState.STAGING:
-            version = staging_version
+            version = os.path.basename(item.latestVersion or '')
             if not version:
                 raise HTTPException(
                     status_code=400,
@@ -110,7 +108,6 @@ def update_import_version(
         version = req.version
         if version == 'STAGING':
             version = storage.get_import_version(import_name, is_staging=True)
-        candidate_version = version
 
         summary = storage.get_import_summary(import_name, version)
         params = import_utils.get_import_params(summary)
@@ -126,16 +123,6 @@ def update_import_version(
 
         if not params.get('latest_version'):
             params['latest_version'] = version
-
-        if params.get('status') == 'INACTIVE':
-            params['next_refresh'] = None
-        else:
-            manifest = storage.get_import_manifest(import_name,
-                                                   version=candidate_version)
-            params['next_refresh'] = import_utils.get_next_refresh(
-                import_name,
-                manifest=manifest,
-                fallback=params.get('next_refresh'))
 
         return_status = params.get('status') or 'FAILURE'
 
