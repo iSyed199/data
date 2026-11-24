@@ -61,13 +61,10 @@ def _sanitize_url(url: str) -> str:
     return re.sub(r'(?i)(apiToken=)[^&\s]+', r'\1REDACTED', str(url))
 
 
-def _define_flags() -> None:
-    """Defines command-line flags for this script."""
-    flags.DEFINE_string(
-        'config_file_path',
-        'gs://unresolved_mcf/cdc/environmental_public_health/heat_stress/latest/configs.py',
-        'Config file path')
-
+flags.DEFINE_string(
+    'config_file_path',
+    'gs://unresolved_mcf/cdc/environmental_public_health/heat_stress/latest/configs.py',
+    'Config file path')
 
 current_year = datetime.now().year
 
@@ -289,7 +286,9 @@ def convert_html_to_csv(category_string=None):
                 raise
 
 
-def reads_config_file(config_file_path: str):
+def reads_config_file():
+    _FLAGS = flags.FLAGS
+    config_file_path = _FLAGS.config_file_path
     storage_client = storage.Client()
     bucket_name = config_file_path.split('/')[2]
     bucket = storage_client.bucket(bucket_name)
@@ -301,8 +300,7 @@ def reads_config_file(config_file_path: str):
     return local_vars
 
 
-def run(config_file_path: str) -> None:
-    """Downloads, converts, and combines the data described by the config."""
+def main(_):
     paths = [
         _CONFIG.get('COMBINED_INPUT_CSV_FILE'),
         _CONFIG.get('INPUT_HTML_FILES'),
@@ -313,7 +311,7 @@ def run(config_file_path: str) -> None:
             shutil.rmtree(path)
         os.makedirs(path, exist_ok=True)
 
-    configs = reads_config_file(config_file_path)
+    configs = reads_config_file()
     URL_LIST = configs['URLS_CONFIG']
 
     for urls in URL_LIST:
@@ -330,10 +328,5 @@ def run(config_file_path: str) -> None:
             )
 
 
-def main(_):
-    run(flags.FLAGS.config_file_path)
-
-
 if __name__ == "__main__":
-    _define_flags()
     app.run(main)

@@ -25,15 +25,11 @@ from absl import app
 from absl import flags
 
 FLAGS = flags.FLAGS
-
-
-def _define_flags() -> None:
-    """Defines command-line flags for this script."""
-    flags.DEFINE_string('database_file',
-                        None,
-                        'database file path.',
-                        short_name='f')
-    flags.DEFINE_string('new_source', "new_source.txt", 'new source file path.')
+flags.DEFINE_string('database_file',
+                    None,
+                    'database file path.',
+                    short_name='f')
+flags.DEFINE_string('new_source', "new_source.txt", 'new source file path.')
 
 
 def get_class_name(a_string):
@@ -276,7 +272,7 @@ def get_schema_from_text(term, id_to_node, new_source_map, id_to_class_name,
     return '\n'.join(schema_piece_list), term_map['id'][0], dcid, new_source_map
 
 
-def write_new_source(new_source_map, new_source_path):
+def write_new_source(new_source_map):
     """Write the new source to a file"""
     write_list = []
     for source_type in new_source_map:
@@ -288,7 +284,7 @@ def write_new_source(new_source_map, new_source_path):
             write_list.append(line)
         write_list.append('\n')
     if write_list:
-        with open(new_source_path, 'w') as file_open:
+        with open(FLAGS.new_source, 'w') as file_open:
             file_open.write('\n'.join(write_list))
 
 
@@ -316,13 +312,10 @@ def build_child_parent_link(file_terms, id_to_node):
     return id_to_node
 
 
-def run(database_file: str, new_source: str) -> None:
-    """Reads the database file and generates the data mcf.
-
-    Args:
-        database_file: Path to the PSI-MI database file to parse.
-        new_source: Path to write examples of unrecognized reference sources.
-    """
+def main(argv):
+    """Main function to read the database file and generate data mcf"""
+    del argv
+    database_file = FLAGS.database_file
     with open(database_file, 'r') as file_open:
         file = file_open.read()
     # clip exists in dcs already. Substitute with ClipInteraction
@@ -390,7 +383,7 @@ def run(database_file: str, new_source: str) -> None:
     with open('psimi2dcid.txt', 'w') as file_open:
         file_open.write('\n'.join(psimi_to_dcid))
     # write new source examples to file if occurs
-    write_new_source(new_source_map, new_source)
+    write_new_source(new_source_map)
     print('Schema has been sucessfully written to BioOntologySchemaEnum.mcf')
     len_string = ','.join([str(len(s)) for s in set_list])
     print(
@@ -398,12 +391,5 @@ def run(database_file: str, new_source: str) -> None:
         + len_string)
 
 
-def main(argv):
-    """Main function to read the database file and generate data mcf"""
-    del argv
-    run(FLAGS.database_file, FLAGS.new_source)
-
-
 if __name__ == '__main__':
-    _define_flags()
     app.run(main)

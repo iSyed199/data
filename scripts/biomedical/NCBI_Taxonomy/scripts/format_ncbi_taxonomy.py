@@ -31,6 +31,7 @@ from os.path import dirname
 from os.path import join
 import re
 import string
+import sys
 from urllib.parse import urlparse
 
 from absl import app
@@ -41,6 +42,10 @@ import pandas as pd
 
 FLAGS = flags.FLAGS
 
+flags.DEFINE_string(
+    'tax_id_dcid_mapping',
+    'gs://datcom-prod-imports/scripts/biomedical/NCBI_tax_id_dcid_mapping/tax_id_dcid_mappings.txt',
+    'Input directory where .txt files downloaded.')
 SOURCE_FILE_PATH = 'input/'
 OUTPUT_FILE_PATH = 'output/'
 OUTPUT_MCF_FILE = 'ncbi_taxonomy_schema_enum.mcf'
@@ -197,18 +202,13 @@ CATEGORIES_DICT = {
     "U": "dcs:TaxonTopLevelCategoryUnclassified"
 }
 
+_FLAGS = flags.FLAGS
 
-def _define_flags() -> None:
-    """Defines command-line flags for this script."""
-    flags.DEFINE_string(
-        'tax_id_dcid_mapping',
-        'gs://datcom-prod-imports/scripts/biomedical/NCBI_tax_id_dcid_mapping/tax_id_dcid_mappings.txt',
-        'Input directory where .txt files downloaded.')
-    flags.DEFINE_string('output_dir', 'output',
-                        'Output directory for generated files.')
-    flags.DEFINE_string('input_dir', 'input',
-                        'Input directory where .dmp files downloaded.')
+flags.DEFINE_string('output_dir', 'output',
+                    'Output directory for generated files.')
 
+flags.DEFINE_string('input_dir', 'input',
+                    'Input directory where .dmp files downloaded.')
 
 MODULE_DIR = dirname(dirname(abspath(__file__)))
 
@@ -631,13 +631,13 @@ def char_replace(s: str) -> str:
     return s.replace('[', "").replace(']', "").replace('"', "")
 
 
-def _set_paths(input_dir: str, output_dir: str) -> None:
-    """Sets the source and output paths, creating the output directory."""
+def set_flages() -> None:
     global OUTPUT_FILE_PATH, SOURCE_FILE_PATH
-    OUTPUT_FILE_PATH = path_join(MODULE_DIR, output_dir)
-    if not os.path.exists(join(MODULE_DIR, output_dir)):
+    _FLAGS(sys.argv)
+    OUTPUT_FILE_PATH = path_join(MODULE_DIR, _FLAGS.output_dir)
+    if not os.path.exists(join(MODULE_DIR, _FLAGS.output_dir)):
         os.mkdir(OUTPUT_FILE_PATH)
-    SOURCE_FILE_PATH = path_join(MODULE_DIR, input_dir)
+    SOURCE_FILE_PATH = path_join(MODULE_DIR, _FLAGS.input_dir)
 
 
 def path_join(path: str, filename: str) -> str:
@@ -653,17 +653,12 @@ def path_join(path: str, filename: str) -> str:
     return join(path, filename)
 
 
-def run(input_dir: str, output_dir: str, tax_id_dcid_mapping: str) -> None:
-    """Formats the NCBI Taxonomy dump files and uploads the tax ID mapping.
-
-    Args:
-        input_dir: Directory (relative to this script) with the .dmp files.
-        output_dir: Directory (relative to this script) for generated files.
-        tax_id_dcid_mapping: GCS path to upload the tax ID to DCID mapping to.
+def main(_):
+    """Main method
     """
     global OUTPUT_FILE_PATH, SOURCE_FILE_PATH
     logging.info("Start format NCBI Taxonomy")
-    _set_paths(input_dir, output_dir)
+    set_flages()
     logging.info("Processing Division dataframe")
     division_df = DivisionCls().create_dataframe(SOURCE_FILE_PATH)
     DivisionCls().append_mcf_data(division_df,
@@ -678,7 +673,7 @@ def run(input_dir: str, output_dir: str, tax_id_dcid_mapping: str) -> None:
     try:
         with open(local_file_path, 'rb') as f:
             data_to_upload = f.read()
-        gcs_output_path = tax_id_dcid_mapping
+        gcs_output_path = FLAGS.tax_id_dcid_mapping
         parsed_url = urlparse(gcs_output_path)
         bucket_name = parsed_url.netloc
         blob_name = parsed_url.path.lstrip('/')
@@ -714,12 +709,5 @@ def run(input_dir: str, output_dir: str, tax_id_dcid_mapping: str) -> None:
     logging.info("NCBI Taxonomy processing completed")
 
 
-def main(_):
-    """Main method
-    """
-    run(FLAGS.input_dir, FLAGS.output_dir, FLAGS.tax_id_dcid_mapping)
-
-
 if __name__ == "__main__":
-    _define_flags()
     app.run(main)
