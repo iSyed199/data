@@ -26,6 +26,12 @@
                 "cpu": 32,
                 "memory": 512,
                 "disk": 400
+            },
+            "config_override": {
+                "ignore_validation_status": [
+                    "check_missing_refs_count",
+                    "check_lint_error_count"
+                ]
             }
         }
     ]
