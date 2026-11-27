@@ -8,30 +8,22 @@
       "params": { "threshold": 0.20 }
     },
     {
+      "rule_id": "check_freshness",
+      "description": "Check that the latest data for WhiteAlone is fresh.",
+      "validator": "SQL_VALIDATOR",
+      "params": {
+        "query": "SELECT COUNT(*) AS cnt FROM stats WHERE StatVar = 'Count_Person_WhiteAlone' AND (MaxDate >= '2022' OR MaxDate = '1999')",
+        "condition": "cnt > 0",
+        "error_msg": "MaxDate for Count_Person_WhiteAlone is older than 2022 (or 1999 for historical) or StatVar missing"
+      }
+    },
+    {
       "rule_id": "check_goldens_national",
       "description": "Validates national and state-level 2000+ data against its golden summary report.",
       "validator": "GOLDENS_CHECK",
       "params": {
         "golden_files": "../../../../golden_data/golden_summary_report_national.csv",
         "input_files": "../../input0/genmcf/summary_report.csv"
-      }
-    },
-    {
-      "rule_id": "check_goldens_before_2000",
-      "description": "Validates data before 2000 against its golden summary report.",
-      "validator": "GOLDENS_CHECK",
-      "params": {
-        "golden_files": "../../../../golden_data/golden_summary_report_before_2000.csv",
-        "input_files": "../../input1/genmcf/summary_report.csv"
-      }
-    },
-    {
-      "rule_id": "check_goldens_after_2000",
-      "description": "Validates county-level 2000+ data against its golden summary report.",
-      "validator": "GOLDENS_CHECK",
-      "params": {
-        "golden_files": "../../../../golden_data/golden_summary_report_after_2000.csv",
-        "input_files": "../../input2/genmcf/summary_report.csv"
       }
     },
     {

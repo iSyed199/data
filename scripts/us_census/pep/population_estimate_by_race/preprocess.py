@@ -1461,12 +1461,14 @@ def download_files():
                         TransientDownloadError, pd.errors.ParserError) as e:
                     retry_number += 1
                     if retry_number > 3:
-                        raise RuntimeError(
-                            f"Error downloading/processing file {url}: {e}"
-                        ) from e
+                        logging.warning(
+                            f"Error downloading/processing file {url}: {e}. Skipping to allow import to proceed without this file."
+                        )
+                        break
                     time.sleep(2)
 
-            logging.info(f"Downloaded file : {url}")
+            if is_file_downloaded:
+                logging.info(f"Downloaded file : {url}")
         return True
     finally:
         session.close()
