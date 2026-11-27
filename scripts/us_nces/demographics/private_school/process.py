@@ -33,6 +33,22 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 MODULE_DIR = os.path.dirname(__file__)
 sys.path.insert(1, MODULE_DIR + '/../..')
 from common.us_education import USEducation
+import common.us_education as us_ed
+
+
+def _new_pv_format(prop_val):
+    val0 = prop_val.iloc[0] if hasattr(prop_val, 'iloc') else prop_val[0]
+    val1 = prop_val.iloc[1] if hasattr(prop_val, 'iloc') else prop_val[1]
+    return f'"{val0}": "dcs:{val1}"' if 'None' not in str(val1) else ""
+
+
+us_ed.DF_DEFAULT_MCF_PROP = [
+    (p, v, _new_pv_format) for p, v, f in us_ed.DF_DEFAULT_MCF_PROP
+]
+for key, conf in us_ed.FORM_STATVAR.items():
+    if "pv_format" in conf:
+        conf["pv_format"] = _new_pv_format
+
 from config import CSV_DUPLICATE_NAME
 from config import CSV_FILE_NAME
 from config import CSV_FILE_PLACE
